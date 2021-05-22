@@ -28,11 +28,11 @@
       <input type="number" v-model.number="delay" :disabled="randomObjects.length > 0">
     </div>
     <div class="button-section">
-      <button @click="startClicked" :disabled="timer">{{ randomObjects.length > 0 ? 'Reset' : 'Start' }}</button>
-      <button @click="stopClicked" :disabled="!timer">Stop</button>
+      <button @click="startClicked" :disabled="isRunning">{{ randomObjects.length > 0 ? 'Reset' : 'Start' }}</button>
+      <button @click="stopClicked" :disabled="!isRunning">Stop</button>
     </div>
 
-    <div v-if="timer || randomObjects.length > 0" class="random-section">
+    <div v-if="isRunning || randomObjects.length > 0" class="random-section">
       <table>
         <tr>
           <td>Alphanumeric</td>
@@ -61,7 +61,7 @@
         <span style="width: 100px; text-align: right">{{ (randomObjects.join(',').length / 1000) }} KB</span>
       </div>
 
-      <button style="width: 200px; margin-top: 30px" :disabled="timer" @click="generateReport">Generate Report</button>
+      <button style="width: 200px; margin-top: 30px" :disabled="isRunning" @click="generateReport">Generate Report</button>
     </div>
   </div>
 </template>
@@ -74,7 +74,7 @@ export default {
     return {
       checkData: [],
       outputSize: '',
-      timer: null,
+      
       randomObjects: [],
       alphaCounter: 0,
       integerCounter: 0,
@@ -84,7 +84,9 @@ export default {
       numericDist: '',
       floatDist: '',
 
-      delay: 0
+      delay: 0,
+
+      isRunning: false
     }
   },
   props: {
@@ -92,8 +94,11 @@ export default {
   methods: {
     startClicked: async function() {
       if (this.randomObjects.length == 0) {
-        this.timerInterval();
-        this.timer = setInterval(await this.timerInterval, this.delay);
+        this.isRunning = true;
+        while (this.isRunning) {
+          await this.getRandom();
+          await this.$sleep(this.delay);
+        }
       } else {
         this.randomObjects = [];
         this.alphaCounter = 0;
@@ -102,12 +107,9 @@ export default {
       }
     },
     stopClicked: function() {
-      if (this.timer) {
-        clearInterval(this.timer);
-        this.timer = null;
-      }
+      this.isRunning = false;
     },
-    timerInterval: async function() {
+    getRandom: async function() {
       var random = await this.$axios.get(`/apiv1/GetRandom?distribution=${this.getDistribution()}`);
       switch (random.data['type']) {
         case 'Alphanumeric':
@@ -142,18 +144,6 @@ export default {
       }
 
       return dist.join(',');
-    },
-    checkboxNameClicked: function(e) {
-      if (this.timer || this.randomObjects.length > 0) { 
-        return;
-      }
-
-      let value = e.target.innerHTML.toLowerCase();
-      if (this.checkData.includes(value)) {
-        this.checkData.splice(this.checkData.indexOf(value), 1);
-      } else {
-        this.checkData.push(value);
-      }
     },
     generateReport: async function() {
       var generate = await this.$axios.post('/apiv1/GenerateReport', this.randomObjects.join(','));
