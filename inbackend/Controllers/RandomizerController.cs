@@ -32,7 +32,7 @@ namespace inbackend.Controllers
       switch (random)
       {
           case 0:
-            // return new ReportItem { type = "Alphanumeric", value = characters.GetAlphaNumeric };
+            return new ReportItem { type = "Alphanumeric", value = characters.GetAlphaNumeric };
           case 1:
             return new ReportItem { type = "Integer", value = characters.GetNumeric };
           case 2:
