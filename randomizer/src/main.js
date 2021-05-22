@@ -36,6 +36,9 @@ const axios = Axios
 axios.defaults.baseURL = 'https://localhost:5001'
 
 Vue.prototype.$axios = axios
+Vue.prototype.$sleep = function(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
 new Vue({
   render: h => h(App),
