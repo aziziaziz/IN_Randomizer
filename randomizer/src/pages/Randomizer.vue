@@ -5,16 +5,16 @@
       <div class="setup-left">
         <div class="title">Set the data distribution</div>
         <div class="checkbox-section">
-          <CheckBox :isChecked.sync="alphaNumericChecked" value="AlphaNumeric" />
-          <input type="number" v-model.number="alphaDist" :disabled="randomObjects.length > 0 || !alphaNumericChecked"> %
+          <CheckBox :isChecked.sync="distributionCheck[0]" value="AlphaNumeric" />
+          <input type="number" v-model.number="distributionValue[0]" :disabled="randomObjects.length > 0 || !distributionCheck[0]" max="100" min="0"> %
         </div>
         <div class="checkbox-section">
-          <CheckBox :isChecked.sync="numericChecked" value="Numeric" />
-          <input type="number" v-model.number="numericDist" :disabled="randomObjects.length > 0 || !numericChecked"> %
+          <CheckBox :isChecked.sync="distributionCheck[1]" value="Numeric" />
+          <input type="number" v-model.number="distributionValue[1]" :disabled="randomObjects.length > 0 || !distributionCheck[1]" max="100" min="0"> %
         </div>
         <div class="checkbox-section">
-          <CheckBox :isChecked.sync="floatChecked" value="Float" />
-          <input type="number" v-model.number="floatDist" :disabled="randomObjects.length > 0 || !floatChecked"> %
+          <CheckBox :isChecked.sync="distributionCheck[2]" value="Float" />
+          <input type="number" v-model.number="distributionValue[2]" :disabled="randomObjects.length > 0 || !distributionCheck[2]" max="100" min="0"> %
         </div>
       </div>
       <div class="splitter"></div>
@@ -75,6 +75,9 @@ export default {
       alphaNumericChecked: true,
       numericChecked: true,
       floatChecked: true,
+
+      distributionCheck: [ true, true, true ],
+      distributionValue: [ 33, 33, 33 ],
 
       checkData: [],
       outputSize: '',
@@ -156,37 +159,30 @@ export default {
         this.$router.push('/Report');
       }
     },
-    checkPercentage: function() {
-      let tickCount = this.alphaNumericChecked + this.numericChecked + this.floatChecked;
-      let perc = 100 / tickCount;
+    getCheckedIndex: function() {
+      let checked = [];
+      let unchecked = [];
+      this.distributionCheck.forEach((d, i) => d ? checked.push(i) : unchecked.push(i));
 
-      this.alphaDist = this.alphaNumericChecked ? perc : '';
-      this.numericDist = this.numericChecked ? perc : '';
-      this.floatDist = this.floatChecked ? perc : '';
+      return { checked: checked, unchecked: unchecked };
     },
-    calcDistribution: function() {
+    checkPercentage: function() {
+      let checked = this.getCheckedIndex();
+      let perc = 100 / checked.checked.length;
 
+      checked.checked.forEach(c => this.distributionValue[c] = perc);
+      checked.unchecked.forEach(c => this.distributionValue[c] = '');
+    },
+    calcDistribution: function(val, attr) {
     }
   },
+  mounted() {
+    this.checkPercentage();
+  },
   watch: {
-    alphaNumericChecked: function() {
+    distributionCheck: function() {
       this.checkPercentage();
-    },
-    floatChecked: function() {
-      this.checkPercentage();
-    },
-    numericChecked: function() {
-      this.checkPercentage();
-    },
-    alphaDist: function() {
-      this.calcDistribution();
-    },
-    numericDist: function() {
-      this.calcDistribution();
-    },
-    floatDist: function() {
-      this.calcDistribution();
-    },
+    }
   }
 };
 </script>
@@ -231,6 +227,7 @@ export default {
         margin-bottom: 5px;
 
         > input {
+          width: 100px;
           max-width: 100px;
           text-align: right;
         }
