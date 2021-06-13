@@ -9,6 +9,10 @@ import Axios from 'axios'
 
 import Vuex from './js/vuex'
 
+import CheckBox from './components/CheckBox.vue'
+
+Vue.component('CheckBox', CheckBox)
+
 Vue.config.productionTip = false
 Vue.use(Router)
 
