@@ -34,7 +34,7 @@ namespace inbackend.Controllers
           case 0:
             return new ReportItem { type = "Alphanumeric", value = characters.GetAlphaNumeric };
           case 1:
-            return new ReportItem { type = "Integer", value = characters.GetNumeric };
+            return new ReportItem { type = "Numeric", value = characters.GetNumeric };
           case 2:
             return new ReportItem { type = "Float", value = characters.GetFloat };
           default:
