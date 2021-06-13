@@ -5,16 +5,16 @@
       <div class="setup-left">
         <div class="title">Set the data distribution</div>
         <div class="checkbox-section">
-          <div>Alphanumeric</div>
-          <input type="number" v-model.number="alphaDist" :disabled="randomObjects.length > 0">
+          <CheckBox :isChecked.sync="alphaNumericChecked" value="AlphaNumeric" />
+          <input type="number" v-model.number="alphaDist" :disabled="randomObjects.length > 0 || !alphaNumericChecked"> %
         </div>
         <div class="checkbox-section">
-          <div>Numeric</div>
-          <input type="number" v-model.number="numericDist" :disabled="randomObjects.length > 0">
+          <CheckBox :isChecked.sync="numericChecked" value="Numeric" />
+          <input type="number" v-model.number="numericDist" :disabled="randomObjects.length > 0 || !numericChecked"> %
         </div>
         <div class="checkbox-section">
-          <div>Float</div>
-          <input type="number" v-model.number="floatDist" :disabled="randomObjects.length > 0">
+          <CheckBox :isChecked.sync="floatChecked" value="Float" />
+          <input type="number" v-model.number="floatDist" :disabled="randomObjects.length > 0 || !floatChecked"> %
         </div>
       </div>
       <div class="splitter"></div>
@@ -72,6 +72,10 @@ export default {
   },
   data: function() {
     return {
+      alphaNumericChecked: true,
+      numericChecked: true,
+      floatChecked: true,
+
       checkData: [],
       outputSize: '',
       
@@ -80,9 +84,9 @@ export default {
       integerCounter: 0,
       floatCounter: 0,
 
-      alphaDist: '',
-      numericDist: '',
-      floatDist: '',
+      alphaDist: 33,
+      numericDist: 33,
+      floatDist: 34,
 
       delay: 0,
 
@@ -110,7 +114,7 @@ export default {
       this.isRunning = false;
     },
     getRandom: async function() {
-      var random = await this.$axios.get(`/apiv1/GetRandom?distribution=${this.getDistribution()}`);
+      let random = await this.$axios.get(`/apiv1/GetRandom?distribution=${this.getDistribution()}`);
       switch (random.data['type']) {
         case 'Alphanumeric':
           this.alphaCounter++;
@@ -132,7 +136,7 @@ export default {
         return [0,1,2].join(',');
       }
 
-      var dist = [];
+      let dist = [];
       if ((this.alphaCounter / this.randomObjects.length * 100) <= this.alphaDist) {
         dist.push(0);
       }
@@ -146,12 +150,43 @@ export default {
       return dist.join(',');
     },
     generateReport: async function() {
-      var generate = await this.$axios.post('/apiv1/GenerateReport', this.randomObjects.join(','));
+      let generate = await this.$axios.post('/apiv1/GenerateReport', this.randomObjects.join(','));
       if (generate.data) {
         this.$store.state.canLoadReport = true;
         this.$router.push('/Report');
       }
+    },
+    checkPercentage: function() {
+      let tickCount = this.alphaNumericChecked + this.numericChecked + this.floatChecked;
+      let perc = 100 / tickCount;
+
+      this.alphaDist = this.alphaNumericChecked ? perc : '';
+      this.numericDist = this.numericChecked ? perc : '';
+      this.floatDist = this.floatChecked ? perc : '';
+    },
+    calcDistribution: function() {
+
     }
+  },
+  watch: {
+    alphaNumericChecked: function() {
+      this.checkPercentage();
+    },
+    floatChecked: function() {
+      this.checkPercentage();
+    },
+    numericChecked: function() {
+      this.checkPercentage();
+    },
+    alphaDist: function() {
+      this.calcDistribution();
+    },
+    numericDist: function() {
+      this.calcDistribution();
+    },
+    floatDist: function() {
+      this.calcDistribution();
+    },
   }
 };
 </script>
@@ -204,6 +239,11 @@ export default {
           cursor: pointer;
           min-width: 120px;
           text-align: left;
+        }
+
+        > .checkbox {
+          display: flex;
+          align-items: center;
         }
       }
     }
