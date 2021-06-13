@@ -4,17 +4,9 @@
     <div class="setup-section">
       <div class="setup-left">
         <div class="title">Set the data distribution</div>
-        <div class="checkbox-section">
-          <CheckBox :isChecked.sync="distributionCheck[0]" value="AlphaNumeric" />
-          <input type="number" v-model.number="distributionValue[0]" :disabled="randomObjects.length > 0 || !distributionCheck[0]" max="100" min="0"> %
-        </div>
-        <div class="checkbox-section">
-          <CheckBox :isChecked.sync="distributionCheck[1]" value="Numeric" />
-          <input type="number" v-model.number="distributionValue[1]" :disabled="randomObjects.length > 0 || !distributionCheck[1]" max="100" min="0"> %
-        </div>
-        <div class="checkbox-section">
-          <CheckBox :isChecked.sync="distributionCheck[2]" value="Float" />
-          <input type="number" v-model.number="distributionValue[2]" :disabled="randomObjects.length > 0 || !distributionCheck[2]" max="100" min="0"> %
+        <div v-for="(title, index) in distributionTitle" :key="index" class="checkbox-section">
+          <CheckBox :isChecked.sync="distributionCheck[index]" :value="title" />
+          <input type="number" v-model.number="distributionValue[index]" @input="distributionChanged(index)" :disabled="randomObjects.length > 0 || !distributionCheck[index]" max="100" min="0"> %
         </div>
       </div>
       <div class="splitter"></div>
@@ -27,6 +19,7 @@
       <div>Delay between each generated object (1000 = 1 second)</div>
       <input type="number" v-model.number="delay" :disabled="randomObjects.length > 0">
     </div>
+    <div v-if="error" class="error">{{ error }}</div>
     <div class="button-section">
       <button @click="startClicked" :disabled="isRunning">{{ randomObjects.length > 0 ? 'Reset' : 'Start' }}</button>
       <button @click="stopClicked" :disabled="!isRunning">Stop</button>
@@ -34,25 +27,15 @@
 
     <div v-if="isRunning || randomObjects.length > 0" class="random-section">
       <table>
-        <tr>
-          <td>Alphanumeric</td>
+        <tr v-for="(dt, dtIndex) in distributionTitle" :key="dtIndex">
+          <td>{{ dt }}</td>
           <td>:</td>
-          <td>{{ alphaCounter }}</td>
-        </tr>
-        <tr>
-          <td>Integer</td>
-          <td>:</td>
-          <td>{{ integerCounter }}</td>
-        </tr>
-        <tr>
-          <td>Float</td>
-          <td>:</td>
-          <td>{{ floatCounter }}</td>
+          <td>{{ randomCounter[dtIndex] }}</td>
         </tr>
         <tr class="border-top">
           <td>Total</td>
           <td>:</td>
-          <td>{{ floatCounter + integerCounter + alphaCounter }}</td>
+          <td>{{ randomCounter.reduce((a, b) => a + b) }}</td>
         </tr>
       </table>
 
@@ -72,10 +55,7 @@ export default {
   },
   data: function() {
     return {
-      alphaNumericChecked: true,
-      numericChecked: true,
-      floatChecked: true,
-
+      distributionTitle: [ 'Alphanumeric', 'Numeric', 'Float' ],
       distributionCheck: [ true, true, true ],
       distributionValue: [ 33, 33, 33 ],
 
@@ -83,23 +63,26 @@ export default {
       outputSize: '',
       
       randomObjects: [],
-      alphaCounter: 0,
-      integerCounter: 0,
-      floatCounter: 0,
-
-      alphaDist: 33,
-      numericDist: 33,
-      floatDist: 34,
+      randomCounter: [ 0, 0, 0 ],
 
       delay: 0,
 
-      isRunning: false
+      isRunning: false,
+
+      error: ''
     }
   },
   props: {
   },
   methods: {
     startClicked: async function() {
+      this.error = '';
+
+      if (this.distributionCheck.filter(d => d).length == 0) {
+        this.error = 'Please check at least one for the data distribution';
+        return;
+      }
+
       if (this.randomObjects.length == 0) {
         this.isRunning = true;
         while (this.isRunning) {
@@ -108,9 +91,7 @@ export default {
         }
       } else {
         this.randomObjects = [];
-        this.alphaCounter = 0;
-        this.integerCounter = 0;
-        this.floatCounter = 0;
+        this.randomCounter = [ 0, 0, 0 ];
       }
     },
     stopClicked: function() {
@@ -118,36 +99,25 @@ export default {
     },
     getRandom: async function() {
       let random = await this.$axios.get(`/apiv1/GetRandom?distribution=${this.getDistribution()}`);
-      switch (random.data['type']) {
-        case 'Alphanumeric':
-          this.alphaCounter++;
-          break;
-        case 'Integer':
-          this.integerCounter++;
-          break;
-        case 'Float':
-          this.floatCounter++;
-          break;
-      }
+      this.randomCounter[this.distributionTitle.indexOf(random.data['type'])]++;
+      
       this.randomObjects.push(random.data['value']);
       if (this.outputSize > 0 && this.randomObjects.join(',').length / 1000 >= this.outputSize) {
         this.stopClicked();
       }
     },
     getDistribution: function() {
-      if (!this.alphaDist || !this.numericDist || !this.floatDist) {
-        return [0,1,2].join(',');
-      }
-
+      let checked = this.getCheckedIndex(true);
       let dist = [];
-      if ((this.alphaCounter / this.randomObjects.length * 100) <= this.alphaDist) {
-        dist.push(0);
-      }
-      if ((this.integerCounter / this.randomObjects.length * 100) <= this.numericDist) {
-        dist.push(1);
-      }
-      if ((this.floatCounter / this.randomObjects.length * 100) <= this.floatDist) {
-        dist.push(2);
+      
+      if (this.randomObjects.length > 0) {
+        checked.checked.forEach((c) => {
+          if (this.randomCounter[c] / this.randomObjects.length * 100 <= this.distributionValue[c]) {
+            dist.push(c);
+          }
+        });
+      } else {
+        dist = checked.checked;
       }
 
       return dist.join(',');
@@ -159,10 +129,21 @@ export default {
         this.$router.push('/Report');
       }
     },
-    getCheckedIndex: function() {
+    getCheckedIndex: function(checkEmpty) {
       let checked = [];
       let unchecked = [];
-      this.distributionCheck.forEach((d, i) => d ? checked.push(i) : unchecked.push(i));
+
+      if (checkEmpty) {
+        this.distributionCheck.forEach((d, i) => {
+          if (d && this.distributionValue[i]) {
+            checked.push(i);
+          } else {
+            unchecked.push(i);
+          }
+        });
+      } else {
+        this.distributionCheck.forEach((d, i) => d ? checked.push(i) : unchecked.push(i));
+      }
 
       return { checked: checked, unchecked: unchecked };
     },
@@ -171,9 +152,26 @@ export default {
       let perc = 100 / checked.checked.length;
 
       checked.checked.forEach(c => this.distributionValue[c] = perc);
-      checked.unchecked.forEach(c => this.distributionValue[c] = '');
+      checked.unchecked.forEach(c => this.distributionValue[c] = null);
     },
-    calcDistribution: function(val, attr) {
+    distributionChanged: function(index) {
+      if (this.distributionValue[index] > 100) {
+        this.distributionValue[index] = 100;
+      }
+      let balance = 100 - this.distributionValue[index];
+      let checked = this.getCheckedIndex();
+      let othersLength = checked.checked.length - 1;
+
+      if (othersLength == 0) {
+        this.distributionValue[index] = 100;
+      } else {
+        let othersValue = balance / othersLength;
+        checked.checked.forEach(c => {
+          if (c != index) {
+            this.distributionValue[c] = othersValue;
+          }
+        });
+      }
     }
   },
   mounted() {
@@ -266,6 +264,10 @@ export default {
       text-align: right;
       margin-top: 5px;
     }
+  }
+
+  > .error {
+    color: red;
   }
 
   > .button-section { 
