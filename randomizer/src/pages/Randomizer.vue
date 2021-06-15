@@ -151,8 +151,23 @@ export default {
       let checked = this.getCheckedIndex();
       let perc = 100 / checked.checked.length;
 
-      checked.checked.forEach(c => this.distributionValue[c] = perc);
+      checked.checked.forEach(c => this.distributionValue[c] = Math.ceil(perc));
       checked.unchecked.forEach(c => this.distributionValue[c] = null);
+
+      let total = this.distributionValue.reduce((a, b) => a + b);
+      if (total > 100) {
+        let extra = total - 100;
+        for (let i = 0; i < this.distributionValue.length; i++) {
+          if (extra > 0) {
+            this.distributionValue[i]--;
+            extra--;
+          }
+
+          if (extra == 0) {
+            break;
+          }
+        }
+      }
     },
     distributionChanged: function(index) {
       if (this.distributionValue[index] > 100) {
@@ -164,13 +179,28 @@ export default {
 
       if (othersLength == 0) {
         this.distributionValue[index] = 100;
-      } else {
-        let othersValue = balance / othersLength;
+      } else if (othersLength == 1) {
         checked.checked.forEach(c => {
           if (c != index) {
-            this.distributionValue[c] = othersValue;
+            this.distributionValue[c] = balance;
           }
         });
+      } else if (othersLength > 1) {
+        let nextIndex = index + 1;
+        if (nextIndex >= checked.checked.length) {
+          nextIndex -= checked.checked.length;
+        }
+
+        let nextnextIndex = nextIndex + 1;
+        if (nextnextIndex >= checked.checked.length) {
+          nextnextIndex -= checked.checked.length;
+        }
+        
+        if (this.distributionValue[index] > (100 - this.distributionValue[nextnextIndex])) {
+          this.distributionValue[index] = 100 - this.distributionValue[nextnextIndex];
+        }
+
+        this.distributionValue[nextIndex] = 100 - this.distributionValue[index] - this.distributionValue[nextnextIndex];
       }
     }
   },
